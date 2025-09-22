@@ -20,6 +20,6 @@ with DAG(
     isin_profile_etl = PythonOperator(
         task_id="isin_profile_etl",
         python_callable=run_isin_profile_task,
-        op_kwargs={"test_mode": False},   # Set True if testing
+        op_kwargs={"test_mode": True},   # Set True if testing
     )
 

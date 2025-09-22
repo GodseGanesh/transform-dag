@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Switch back to the airflow user
+RUN mkdir -p /opt/airflow/logs/isin_profile_transform && chown -R airflow: /opt/airflow/logs
 USER airflow
 
 # Copy requirements.txt and install Python dependencies
