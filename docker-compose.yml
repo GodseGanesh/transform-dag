@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  
+  isin_profile_transform_airflow_postgres:
+    image: postgres:13
+    container_name: isin_profile_transform_airflow_postgres
+    environment:
+      POSTGRES_USER: isin_profile_transform_airflow
+      POSTGRES_PASSWORD: isin_profile_transform_airflow
+      POSTGRES_DB: isin_profile_transform_airflow
+    volumes:
+      - isin_profile_transform_airflow_postgres_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "isin_profile_transform_airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+    networks:
+      - isin_profile_transform_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "isin_profile_transform_airflow_postgres"
+
+  isin_profile_transform_redis:
+    image: redis:latest
+    container_name: isin_profile_transform_redis
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+    restart: always
+    networks:
+      - isin_profile_transform_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "isin_profile_transform_redis"
+
+  isin_profile_transform_airflow_init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isin_profile_transform_airflow_init
+    command: >
+      bash -c "
+      until pg_isready -h isin_profile_transform_airflow_postgres -U isin_profile_transform_airflow;
+      do echo 'Waiting for Airflow PostgreSQL...'; sleep 2; done;
+      airflow db init &&
+      airflow users create --username airflow --password airflow --firstname Airflow --lastname Admin --role Admin --email airflow@example.com
+      "
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://isin_profile_transform_airflow:isin_profile_transform_airflow@isin_profile_transform_airflow_postgres/isin_profile_transform_airflow
+      SQLALCHEMY_SILENCE_UBER_WARNING: '1'
+      AIRFLOW__WEBSERVER__SECRET_KEY: isin_profile_transform_secretkey123
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs/isin_profile_transform
+      PYTHONPATH: /opt/airflow/dags:/opt/airflow/dags/utils:/opt/airflow/dags/scripts:/opt/airflow/dags/config:/opt/airflow/dags/mappings
+    volumes:
+      - ./transform_dags:/opt/airflow/dags
+      - ./.env:/opt/airflow/.env
+      - isin_profile_transform_airflow_logs:/opt/airflow/logs/isin_profile_transform
+    depends_on:
+      isin_profile_transform_airflow_postgres:
+        condition: service_healthy
+    networks:
+      - isin_profile_transform_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "isin_profile_transform_airflow_init"
+
+  isin_profile_transform_airflow_webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isin_profile_transform_airflow_webserver
+    ports:
+      - "8003:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__PARALLELISM: 16
+      AIRFLOW__CORE__DAG_CONCURRENCY: 8
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 4
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://isin_profile_transform_airflow:isin_profile_transform_airflow@isin_profile_transform_airflow_postgres/isin_profile_transform_airflow
+      SQLALCHEMY_SILENCE_UBER_WARNING: '1'
+      AIRFLOW__WEBSERVER__SECRET_KEY: isin_profile_transform_secretkey123
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs/isin_profile_transform
+      PYTHONPATH: /opt/airflow/dags:/opt/airflow/dags/utils:/opt/airflow/dags/scripts:/opt/airflow/dags/config:/opt/airflow/dags/mappings
+    volumes:
+      - ./transform_dags:/opt/airflow/dags
+      - ./.env:/opt/airflow/.env
+      - isin_profile_transform_airflow_logs:/opt/airflow/logs/isin_profile_transform
+    command: ["airflow", "webserver"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      - isin_profile_transform_airflow_init
+      - isin_profile_transform_airflow_postgres
+      - isin_profile_transform_redis
+    networks:
+      - isin_profile_transform_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "isin_profile_transform_airflow_webserver"
+
+  isin_profile_transform_airflow_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isin_profile_transform_airflow_scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__PARALLELISM: 16
+      AIRFLOW__CORE__DAG_CONCURRENCY: 8
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 4
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://isin_profile_transform_airflow:isin_profile_transform_airflow@isin_profile_transform_airflow_postgres/isin_profile_transform_airflow
+      SQLALCHEMY_SILENCE_UBER_WARNING: '1'
+      AIRFLOW__WEBSERVER__SECRET_KEY: isin_profile_transform_secretkey123
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs/isin_profile_transform
+      PYTHONPATH: /opt/airflow/dags:/opt/airflow/dags/utils:/opt/airflow/dags/scripts:/opt/airflow/dags/config:/opt/airflow/dags/mappings
+    volumes:
+      - ./transform_dags:/opt/airflow/dags
+      - ./.env:/opt/airflow/.env
+      - isin_profile_transform_airflow_logs:/opt/airflow/logs/isin_profile_transform
+    command: ["airflow", "scheduler"]
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      - isin_profile_transform_airflow_init
+      - isin_profile_transform_airflow_postgres
+      - isin_profile_transform_redis
+    networks:
+      - isin_profile_transform_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "isin_profile_transform_airflow_scheduler"
+
+networks:
+  isin_profile_transform_network:
+    name: isin_profile_transform_network
+
+volumes:
+  isin_profile_transform_airflow_postgres_db:
+  isin_profile_transform_airflow_logs:

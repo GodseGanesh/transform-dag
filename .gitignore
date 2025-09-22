@@ -1,0 +1,31 @@
+# Python environment
+.myenv/
+*.pyc
+__pycache__/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+
+
+# IDE/Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Bytecode / compiled files
+*.pyo
+*.pyd
+
+
+
+# Jupyter notebooks checkpoints (if any)
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
