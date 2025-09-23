@@ -12,7 +12,7 @@ def map_postgres_isin_basic_info(data):
         "isin_description": clean_string(data.get("ISIN_DESCRIPTION")),
         "issue_description": clean_string(data.get("ISSUE_DESCRIPTION")),
         "former_name": clean_string(data.get("FORMER_NAME")),
-        "coupon_rate_percent": parse_coupon_rate(data.get("COUPON_RATE_PERCENT")),
+        "coupon_rate_percent": parse_coupon_rate(data.get("COUPON_RATE_PERCENT"))[0],
         "maturity_date": parse_date(data.get("MATURITY_DATE")),
         "ytm_percent": parse_decimal("YTM_PERCENT",data.get("YTM_PERCENT")),
         "tenure_years": parse_int(data.get("TENURE_YEARS")),
