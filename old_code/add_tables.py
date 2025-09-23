@@ -2,9 +2,9 @@ import psycopg2
 
 # PostgreSQL connection
 conn = psycopg2.connect(
-    host="93.127.206.37",
+    host="localhost",
     port="5432",
-    dbname="bond_market_temp",
+    dbname="bond_market",
     user="postgres",
     password="postgres"
 )

@@ -1,13 +1,23 @@
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import re
 
-def clean_string(value):
-    """Clean string values, converting '-' to None or handling empty values."""
-    if value and value.strip().upper() in ("-", "N.A.", "NA"):
-        return None
+# def clean_string(value):
+#     """Clean string values, converting '-' to None or handling empty values."""
+#     if value and value.strip().upper() in ("-", "N.A.", "NA"):
+#         return None
 
-    return value.strip()
+#     return value.strip()
+
+def clean_string(value):
+    """Clean string values, converting '-', 'N.A.', 'NA' to None, safely handles None."""
+    if value is None:
+        return None
+    v = str(value).strip()
+    if v.upper() in ("-", "N.A.", "NA"):
+        return None
+    return v
+
 
 def parse_date(date_str):
     """Parse date string to datetime.date, return None if invalid."""
@@ -20,13 +30,18 @@ def parse_date(date_str):
             continue
     return None
 
-def parse_decimal(value):
-    """Parse value to Decimal, return None if invalid."""
+def parse_decimal(field, value):
+    """Parse value to Decimal safely, return None if invalid or non-numeric."""
+    value = clean_string(value)
+    if value is None:
+        return None
     try:
         return Decimal(str(value))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, InvalidOperation):
+        print(f"Invalid decimal value '{value}' for field {field}, setting None")
         return None
     
+
 def parse_int(value):
     """Convert value safely to int or None."""
     try:
